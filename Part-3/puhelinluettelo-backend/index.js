@@ -5,7 +5,7 @@ const morgan = require('morgan');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors()); // 🟢 Ensures frontend can access backend
 app.use(morgan('tiny'));
 
 let persons = [
@@ -23,7 +23,6 @@ app.get('/api/persons', (req, res) => {
 app.get('/api/persons/:id', (req, res) => {
   const id = Number(req.params.id);
   const person = persons.find(p => p.id === id);
-
   if (person) {
     res.json(person);
   } else {
@@ -46,6 +45,10 @@ app.post('/api/persons', (req, res) => {
     return res.status(400).json({ error: "Name and number are required" });
   }
 
+  if (persons.some(person => person.name === name)) {
+    return res.status(400).json({ error: "Name already exists" });
+  }
+
   const newPerson = {
     id: Math.floor(Math.random() * 10000),
     name,
@@ -56,7 +59,7 @@ app.post('/api/persons', (req, res) => {
   res.json(newPerson);
 });
 
-// 🟢 Server listening
+// 🟢 Start the server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

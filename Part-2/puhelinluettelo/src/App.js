@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PersonForm from './components/PersonForm';
@@ -15,6 +16,10 @@ const App = () => {
     axios.get('http://localhost:3001/api/persons')
       .then(response => {
         setPersons(response.data);
+      })
+      .catch(error => {
+        console.error("Error fetching data:", error);
+        alert("Backend is not responding. Make sure the backend is running.");
       });
   }, []);
 
@@ -22,7 +27,6 @@ const App = () => {
   const addPerson = (event) => {
     event.preventDefault();
 
-    // Check for duplicate names
     if (persons.some(person => person.name === newName)) {
       alert(`${newName} is already added to the phonebook`);
       return;
@@ -30,12 +34,15 @@ const App = () => {
 
     const newPerson = { name: newName, number: newNumber };
 
-    // Save to backend
     axios.post('http://localhost:3001/api/persons', newPerson)
       .then(response => {
         setPersons(persons.concat(response.data));
         setNewName('');
         setNewNumber('');
+      })
+      .catch(error => {
+        alert("Error adding contact. Make sure the backend is running.");
+        console.error(error);
       });
   };
 
@@ -45,11 +52,15 @@ const App = () => {
       axios.delete(`http://localhost:3001/api/persons/${id}`)
         .then(() => {
           setPersons(persons.filter(person => person.id !== id));
+        })
+        .catch(error => {
+          alert("Error deleting contact. Make sure the backend is running.");
+          console.error(error);
         });
     }
   };
 
-  // Filter contacts
+  // 🟢 Filter contacts
   const filteredPersons = persons.filter(person =>
     person.name.toLowerCase().includes(filter.toLowerCase())
   );
