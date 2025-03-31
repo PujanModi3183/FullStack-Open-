@@ -7,72 +7,108 @@ const mongoose = require('mongoose');
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(morgan('tiny'));
 
-// 🟢 Connect to MongoDB
+const path = require('path');
+app.use(express.static(path.resolve(__dirname, 'build')));
+
+
+// ✅ Custom Morgan token for logging POST body (for exercise 3.8)
+morgan.token('body', (req) => JSON.stringify(req.body));
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
+
+// ✅ Connect to MongoDB
 const MONGO_URL = process.env.MONGO_URL;
 mongoose.connect(MONGO_URL)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// 🟢 Define Mongoose Schema
+// ✅ Schema with basic validation
 const personSchema = new mongoose.Schema({
-  name: String,
-  number: String
+  name: {
+    type: String,
+    required: true,
+    minlength: 3
+  },
+  number: {
+    type: String,
+    required: true,
+    minlength: 8
+  }
 });
 
 const Person = mongoose.model('Person', personSchema);
 
-// 🟢 GET all contacts from MongoDB
-app.get('/api/persons', (req, res) => {
-  Person.find({})
-    .then(persons => res.json(persons))
-    .catch(error => res.status(500).json({ error: "Failed to fetch contacts" }));
-});
-
-// 🟢 GET a specific contact from MongoDB
-app.get('/api/persons/:id', (req, res) => {
-  Person.findById(req.params.id)
-    .then(person => {
-      if (person) {
-        res.json(person);
-      } else {
-        res.status(404).json({ error: "Person not found" });
-      }
-    })
-    .catch(error => res.status(400).json({ error: "Invalid ID format" }));
-});
-
-// 🔴 DELETE a contact from MongoDB
-app.delete('/api/persons/:id', (req, res) => {
-  Person.findByIdAndDelete(req.params.id)
-    .then(() => res.status(204).end())
-    .catch(error => res.status(500).json({ error: "Failed to delete contact" }));
-});
-
-// 🟢 POST a new contact to MongoDB
-app.post('/api/persons', (req, res) => {
-  const { name, number } = req.body;
-
-  if (!name || !number) {
-    return res.status(400).json({ error: "Name and number are required" });
-  }
-
-  // Check for duplicate name in database
-  Person.findOne({ name }).then(existingPerson => {
-    if (existingPerson) {
-      return res.status(400).json({ error: "Name already exists" });
-    }
-
-    const newPerson = new Person({ name, number });
-    newPerson.save()
-      .then(savedPerson => res.json(savedPerson))
-      .catch(error => res.status(500).json({ error: "Failed to save contact" }));
+// ✅ /info route (exercise 3.2)
+app.get('/info', (req, res) => {
+  Person.countDocuments({}).then(count => {
+    res.send(`<p>Phonebook has info for ${count} people</p><p>${new Date()}</p>`);
   });
 });
 
-// 🟢 Start the server
+// ✅ GET all persons
+app.get('/api/persons', (req, res, next) => {
+  Person.find({})
+    .then(persons => res.json(persons))
+    .catch(error => next(error));
+});
+
+// ✅ GET person by ID
+app.get('/api/persons/:id', (req, res, next) => {
+  Person.findById(req.params.id)
+    .then(person => person ? res.json(person) : res.status(404).end())
+    .catch(error => next(error));
+});
+
+// ✅ POST new person
+app.post('/api/persons', (req, res, next) => {
+  const { name, number } = req.body;
+
+  if (!name || !number) {
+    return res.status(400).json({ error: 'name and number are required' });
+  }
+
+  Person.findOne({ name }).then(existing => {
+    if (existing) {
+      return res.status(400).json({ error: 'name must be unique' });
+    }
+
+    const person = new Person({ name, number });
+    person.save()
+      .then(saved => res.json(saved))
+      .catch(error => next(error));
+  });
+});
+
+// ✅ DELETE person
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndDelete(req.params.id)
+    .then(() => res.status(204).end())
+    .catch(error => next(error));
+});
+
+// ✅ Unknown endpoint handler
+app.use((req, res) => {
+  res.status(404).send({ error: 'unknown endpoint' });
+});
+
+// ✅ Error handler
+app.use((error, req, res, next) => {
+  console.error(error.message);
+  if (error.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' });
+  } else if (error.name === 'ValidationError') {
+    return res.status(400).json({ error: error.message });
+  }
+  next(error);
+});
+
+// ✅ Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'build', 'index.html'));
+});
+
