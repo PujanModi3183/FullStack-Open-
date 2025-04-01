@@ -12,17 +12,17 @@ const path = require('path');
 app.use(express.static(path.resolve(__dirname, 'build')));
 
 
-// ✅ Custom Morgan token for logging POST body (for exercise 3.8)
+
 morgan.token('body', (req) => JSON.stringify(req.body));
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
 
-// ✅ Connect to MongoDB
+
 const MONGO_URL = process.env.MONGO_URL;
 mongoose.connect(MONGO_URL)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+  .then(() => console.log(' Connected to MongoDB'))
+  .catch(err => console.error(' MongoDB Connection Error:', err));
 
-// ✅ Schema with basic validation
+
 const personSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -38,28 +38,28 @@ const personSchema = new mongoose.Schema({
 
 const Person = mongoose.model('Person', personSchema);
 
-// ✅ /info route (exercise 3.2)
+
 app.get('/info', (req, res) => {
   Person.countDocuments({}).then(count => {
     res.send(`<p>Phonebook has info for ${count} people</p><p>${new Date()}</p>`);
   });
 });
 
-// ✅ GET all persons
+
 app.get('/api/persons', (req, res, next) => {
   Person.find({})
     .then(persons => res.json(persons))
     .catch(error => next(error));
 });
 
-// ✅ GET person by ID
+
 app.get('/api/persons/:id', (req, res, next) => {
   Person.findById(req.params.id)
     .then(person => person ? res.json(person) : res.status(404).end())
     .catch(error => next(error));
 });
 
-// ✅ POST new person
+
 app.post('/api/persons', (req, res, next) => {
   const { name, number } = req.body;
 
@@ -79,19 +79,19 @@ app.post('/api/persons', (req, res, next) => {
   });
 });
 
-// ✅ DELETE person
+
 app.delete('/api/persons/:id', (req, res, next) => {
   Person.findByIdAndDelete(req.params.id)
     .then(() => res.status(204).end())
     .catch(error => next(error));
 });
 
-// ✅ Unknown endpoint handler
+
 app.use((req, res) => {
   res.status(404).send({ error: 'unknown endpoint' });
 });
 
-// ✅ Error handler
+
 app.use((error, req, res, next) => {
   console.error(error.message);
   if (error.name === 'CastError') {
@@ -102,11 +102,12 @@ app.use((error, req, res, next) => {
   next(error);
 });
 
-// ✅ Start server
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(` Server running on port ${PORT}`);
 });
+
 
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'build', 'index.html'));

@@ -11,7 +11,7 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('');
   const [filter, setFilter] = useState('');
 
-  // 🟢 Fetch contacts from backend when the app loads
+  
   useEffect(() => {
     axios.get('http://localhost:3001/api/persons')
       .then(response => {
@@ -23,7 +23,7 @@ const App = () => {
       });
   }, []);
 
-  // 🟢 Add a new contact
+
   const addPerson = (event) => {
     event.preventDefault();
 
@@ -46,7 +46,7 @@ const App = () => {
       });
   };
 
-  // 🟢 Delete a contact
+
   const deletePerson = (id) => {
     if (window.confirm('Do you really want to delete this contact?')) {
       axios.delete(`http://localhost:3001/api/persons/${id}`)
@@ -60,7 +60,7 @@ const App = () => {
     }
   };
 
-  // 🟢 Filter contacts
+
   const filteredPersons = persons.filter(person =>
     person.name.toLowerCase().includes(filter.toLowerCase())
   );
