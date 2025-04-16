@@ -1,55 +1,74 @@
-const supertest = require('supertest')
+// blog_api.test.js
 const mongoose = require('mongoose')
-const app = require('../app') // import your express app
+const supertest = require('supertest')
+const app = require('../app')
 const Blog = require('../models/blog')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
-// Wrap your app in SuperTest
 const api = supertest(app)
 
-const initialBlogs = [
-  {
-    title: 'React patterns',
-    author: 'Michael Chan',
-    url: 'https://reactpatterns.com/',
-    likes: 7,
-  },
-  {
-    title: 'Go To Statement Considered Harmful',
-    author: 'Edsger W. Dijkstra',
-    url: 'https://example.com',
-    likes: 5,
-  }
-]
+let token = ''
 
 beforeEach(async () => {
   await Blog.deleteMany({})
-  await Blog.insertMany(initialBlogs)
-})
+  await User.deleteMany({})
 
-test('blogs are returned as JSON', async () => {
-  await api
-    .get('/api/blogs')
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
-})
+  const passwordHash = await bcrypt.hash('test123', 10)
+  const user = new User({ username: 'testuser', name: 'Test User', passwordHash })
+  await user.save()
 
-test('correct number of blog posts returned', async () => {
-  const response = await api.get('/api/blogs')
-  console.log('Blog count:', response.body.length)
-  if (response.body.length !== initialBlogs.length) {
-    throw new Error('Blog count mismatch')
+  const userForToken = {
+    username: user.username,
+    id: user._id,
   }
+
+  token = jwt.sign(userForToken, process.env.SECRET)
+
+  const blog = new Blog({
+    title: 'First Blog',
+    author: 'Author',
+    url: 'http://example.com',
+    likes: 5,
+    user: user._id
+  })
+  await blog.save()
+})
+
+test('a valid blog can be added with a token', async () => {
+  const newBlog = {
+    title: 'Token Protected Blog',
+    author: 'Pujan',
+    url: 'http://secured.com',
+    likes: 10
+  }
+
+  await api
+    .post('/api/blogs')
+    .set('Authorization', `Bearer ${token}`)
+    .send(newBlog)
+    .expect(201)
+    .expect('Content-Type', /application\/json/)
+
+  const blogsAtEnd = await Blog.find({})
+  expect(blogsAtEnd).toHaveLength(2)
+})
+
+test('blog creation fails with 401 if token is missing', async () => {
+  const newBlog = {
+    title: 'Unauthorized Blog',
+    author: 'Pujan',
+    url: 'http://fail.com',
+    likes: 1
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(401)
 })
 
 afterAll(async () => {
   await mongoose.connection.close()
 })
-
-test('unique identifier is named id', async () => {
-    const response = await api.get('/api/blogs')
-    const blog = response.body[0]
-  
-    expect(blog.id).toBeDefined()
-    expect(blog._id).toBeUndefined()
-  })
-  

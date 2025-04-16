@@ -1,22 +1,32 @@
+require('dotenv').config({
+  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+})
+
 const express = require('express')
 const mongoose = require('mongoose')
-const Blog = require('./models/blog')
+const cors = require('cors')
+
+const blogsRouter = require('./controllers/blogs')
+const usersRouter = require('./controllers/users')
+const loginRouter = require('./controllers/login')
+const middleware = require('./utils/middleware')
 
 const app = express()
+
+app.use(cors())
 app.use(express.json())
+app.use(middleware.tokenExtractor) // Extract token from all requests
 
-const mongoUrl = 'mongodb+srv://pujanmodi96:modipujan@cluster0.8qm8h.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+app.use('/api/login', loginRouter)
+app.use('/api/users', usersRouter)
+app.use('/api/blogs', middleware.userExtractor, blogsRouter) // ✅ Apply userExtractor here
+
+const mongoUrl = process.env.NODE_ENV === 'test'
+  ? process.env.TEST_MONGODB_URI
+  : process.env.MONGODB_URI
+
 mongoose.connect(mongoUrl)
-
-app.get('/api/blogs', async (req, res) => {
-  const blogs = await Blog.find({})
-  res.json(blogs)
-})
-
-app.post('/api/blogs', async (req, res) => {
-  const blog = new Blog(req.body)
-  const savedBlog = await blog.save()
-  res.status(201).json(savedBlog)
-})
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(error => console.error('❌ MongoDB connection error:', error))
 
 module.exports = app
